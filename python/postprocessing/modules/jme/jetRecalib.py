@@ -89,3 +89,8 @@ jetRecalib2017C = lambda : jetRecalib("Fall17_17Nov2017C_V6_DATA")
 jetRecalib2017D = lambda : jetRecalib("Fall17_17Nov2017D_V6_DATA")
 jetRecalib2017E = lambda : jetRecalib("Fall17_17Nov2017E_V6_DATA")
 jetRecalib2017F = lambda : jetRecalib("Fall17_17Nov2017F_V6_DATA")
+
+jetRecalib2018A = lambda : jetRecalib("Autumn18_RunA_V8_DATA")
+jetRecalib2018B = lambda : jetRecalib("Autumn18_RunB_V8_DATA")
+jetRecalib2018C = lambda : jetRecalib("Autumn18_RunC_V8_DATA")
+jetRecalib2018D = lambda : jetRecalib("Autumn18_RunD_V8_DATA")
