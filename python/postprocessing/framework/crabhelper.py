@@ -31,7 +31,7 @@ def inputFiles():
             #tested=True
          else :
             print "Test open failed, forcing AAA"
-            crabFiles[i]="root://cms-xrd-global.cern.ch/"+crabFiles[i]
+            crabFiles[i]="root://cms-xrd-global.cern.ch/"+crabFiles[i] if "root://cms-xrd-global.cern.ch/" not in crabFiles[i] else crabFiles[i]
             forceaaa=True
        else :
             crabFiles[i]=pfn
@@ -39,7 +39,7 @@ def inputFiles():
 
      else:
        print "Data is not local, using AAA/xrootd"
-       crabFiles[i]="root://cms-xrd-global.cern.ch/"+crabFiles[i]
+       crabFiles[i]="root://cms-xrd-global.cern.ch/"+crabFiles[i] if "root://cms-xrd-global.cern.ch/" not in crabFiles[i] else crabFiles[i]
    return crabFiles
 
 def runsAndLumis():
