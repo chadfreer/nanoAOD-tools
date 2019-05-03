@@ -53,7 +53,8 @@ class jetRecalib(Module):
     def analyze(self, event):
         """process event, return True (go to next module) or False (fail, go to next event)"""
         jets = Collection(event, self.jetBranchName )
-        met = Object(event, "MET") 
+        met = Object(event, "MET")
+        muons = Collection(event, "Muon") 
 
         jets_pt_nom = []
         ( met_px,         met_py         ) = ( met.pt*math.cos(met.phi), met.pt*math.sin(met.phi) )
@@ -62,28 +63,42 @@ class jetRecalib(Module):
         met_py_nom = met_py
                 
         rho = getattr(event, self.rhoBranchName)
-        
         for jet in jets:
-	    jet_pt=jet.pt
+	    #Cleaning by energy fraction by JetMET suggestion (Chad Freer May, 2019)
+            emEnergyFraction = jet.chEmEF + jet.neEmEF
+	    if emEnergyFraction > 0.9 : continue
+	    #Now remove the muon 4-vector from the jet before appliny Jecs (C.F.)
+	    newjet = ROOT.TLorentzVector()
+            newjet = jet.p4()
+	    if jet.muonIdx1>-1:
+		newjet = jet.p4() - muons[jet.muonIdx1].p4()
+            if jet.muonIdx2>-1:
+                newjet = newjet - muons[jet.muonIdx2].p4()
+	    #Setting the Jets variables to corrected values (Get jet cosphi and sinphi to calculate MET correctly)
+	    jet.pt = newjet.Pt()
+	    jet.eta= newjet.Eta()
+            jet.phi= newjet.Phi()
 	    jet_pt = self.jetReCalibrator.correct(jet,rho)
             jet_pt_nom           = jet_pt # don't smear resolution in data
             if jet_pt_nom < 0.0:
                 jet_pt_nom *= -1.0
             jets_pt_nom    .append(jet_pt_nom)
             if jet_pt_nom > 15.:
-                jet_cosPhi = math.cos(jet.phi)
-                jet_sinPhi = math.sin(jet.phi)
-                met_px_nom = met_px_nom - (jet_pt_nom - jet.pt)*jet_cosPhi
-                met_py_nom = met_py_nom - (jet_pt_nom - jet.pt)*jet_sinPhi
+                jet_cosPhi = math.cos(newjet.Phi())
+                jet_sinPhi = math.sin(newjet.Phi())
+                met_px_nom = met_px_nom - (jet_pt_nom - newjet.Pt())*jet_cosPhi
+                met_py_nom = met_py_nom - (jet_pt_nom - newjet.Pt())*jet_sinPhi
+                    
+                    
         self.out.fillBranch("%s_pt_nom" % self.jetBranchName, jets_pt_nom)
         self.out.fillBranch("MET_pt_nom", math.sqrt(met_px_nom**2 + met_py_nom**2))
         self.out.fillBranch("MET_phi_nom", math.atan2(met_py_nom, met_px_nom))        
-
-        return True
-
-
+                    
+        return True 
+                   
+                    
 # define modules using the syntax 'name = lambda : constructor' to avoid having them loaded when not needed
-
+                    
 jetRecalib2017B = lambda : jetRecalib("Fall17_17Nov2017B_V6_DATA")
 jetRecalib2017C = lambda : jetRecalib("Fall17_17Nov2017C_V6_DATA")
 jetRecalib2017D = lambda : jetRecalib("Fall17_17Nov2017D_V6_DATA")

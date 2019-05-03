@@ -10,7 +10,7 @@ from PhysicsTools.NanoAODTools.postprocessing.modules.jme.jetSmearer import jetS
 from PhysicsTools.NanoAODTools.postprocessing.modules.jme.JetReCalibrator import JetReCalibrator
 
 class jetmetUncertaintiesProducer(Module):
-    def __init__(self, era, globalTag, jesUncertainties = [ "Total" ], jetType = "AK4PFchs", redoJEC=False, noGroom=False):
+    def __init__(self, era, globalTag, jesUncertainties = [ "Total" ], jetType = "AK4PFchs", redoJEC=True, noGroom=False):
 
         self.era = era
 	self.redoJEC = redoJEC
@@ -164,6 +164,7 @@ class jetmetUncertaintiesProducer(Module):
         """process event, return True (go to next module) or False (fail, go to next event)"""
         jets = Collection(event, self.jetBranchName )
         genJets = Collection(event, self.genJetBranchName )
+	muons = Collection(event, "Muon")
 
         if self.doGroomed :
             subJets = Collection(event, self.subJetBranchName )
@@ -249,7 +250,20 @@ class jetmetUncertaintiesProducer(Module):
                 jet_rawpt = -1.0 * jet.pt #If factor not present factor will be saved as -1
             
 	    if self.redoJEC :
-		jet_pt = self.jetReCalibrator.correct(jet,rho)
+		#Cleaning by energy fraction by JetMET suggestion (Chad Freer May, 2019)
+		emEnergyFraction = jet.chEmEF + jet.neEmEF
+            	if emEnergyFraction < 0.9 :
+			#Now remove the muon 4-vector from the jet before appliny Jecs (C.F.)
+           	 	newjet = ROOT.TLorentzVector()
+           	 	newjet = jet.p4()
+           	 	if jet.muonIdx1>-1:
+           	     		newjet = jet.p4() - muons[jet.muonIdx1].p4()
+           	 	if jet.muonIdx2>-1:
+           	     		newjet = newjet - muons[jet.muonIdx2].p4()
+           	 	jet.pt = newjet.Pt()
+           	 	jet.eta= newjet.Eta()
+           	 	jet.phi= newjet.Phi()
+			jet_pt = self.jetReCalibrator.correct(jet,rho)
             jets_corr_JEC.append(jet_pt/jet_rawpt)
             jets_corr_JER.append(jet_pt_jerNomVal)
             
@@ -331,8 +345,14 @@ class jetmetUncertaintiesProducer(Module):
             if self.corrMET and jet_pt_nom > self.unclEnThreshold:
                 jet_cosPhi = math.cos(jet.phi)
                 jet_sinPhi = math.sin(jet.phi)
-                met_px_nom = met_px_nom - (jet_pt_nom - jet_pt)*jet_cosPhi
-                met_py_nom = met_py_nom - (jet_pt_nom - jet_pt)*jet_sinPhi
+             	if self.redoJEC :
+                	emEnergyFraction = jet.chEmEF + jet.neEmEF
+                	if emEnergyFraction < 0.9 :
+                		met_px_nom = met_px_nom - (jet_pt_nom - newjet.Pt())*jet_cosPhi
+                		met_py_nom = met_py_nom - (jet_pt_nom - newjet.Pt())*jet_sinPhi
+			else:
+                		met_px_nom = met_px_nom - (jet_pt_nom - jet_pt)*jet_cosPhi
+                		met_py_nom = met_py_nom - (jet_pt_nom - jet_pt)*jet_sinPhi
                 met_px_jerUp   = met_px_jerUp   - (jet_pt_jerUp   - jet_pt_nom)*jet_cosPhi
                 met_py_jerUp   = met_py_jerUp   - (jet_pt_jerUp   - jet_pt_nom)*jet_sinPhi
                 met_px_jerDown = met_px_jerDown - (jet_pt_jerDown - jet_pt_nom)*jet_cosPhi
